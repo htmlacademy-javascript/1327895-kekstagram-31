@@ -54,7 +54,8 @@ const onPhotoEditorResetButtonClick = () => closePhotoEditor() ;
 const onDocumentKeydown = (evt) => {
   if(isEscapeKey(evt)) {
     evt.preventDefault();
-    if(document.activeElement === hashtagInput || document.activeElement === commentInput) {
+    const isSendingData = document.querySelector('.error');
+    if(document.activeElement === hashtagInput || document.activeElement === commentInput || isSendingData) {
       evt.stopPropagation();
     } else {
       uploadForm.reset();
@@ -63,16 +64,23 @@ const onDocumentKeydown = (evt) => {
   }
 };
 
+const pristine = new Pristine(uploadForm, {
+  classTo: 'img-upload__field-wrapper',
+  errorTextClass: 'img-upload__field-wrapper--error',
+  errorTextParent: 'img-upload__field-wrapper',
+});
+
 function closePhotoEditor () {
   imageUploadOverlay.classList.add('hidden');
   pageBody.classList.remove('modal-open');
   document.removeEventListener('keydown', onDocumentKeydown);
   imageUploadCancel.removeEventListener('click', onPhotoEditorResetButtonClick);
   imageUploadInput.value = '';
+  pristine.reset();
 }
 
 const initUploadModal = () => {
-  imageUploadInput.addEventListener('change', () =>{
+  imageUploadInput.addEventListener('change', () => {
     imageUploadOverlay.classList.remove('hidden');
     pageBody.classList.add('modal-open');
     imageUploadCancel.addEventListener('click', onPhotoEditorResetButtonClick);
@@ -80,12 +88,6 @@ const initUploadModal = () => {
     resetFilter();
   });
 };
-
-const pristine = new Pristine(uploadForm, {
-  classTo: 'img-upload__field-wrapper',
-  errorTextClass: 'img-upload__field-wrapper--error',
-  errorTextParent: 'img-upload__field-wrapper',
-});
 
 const error = () => errorMessage;
 const isValidHashtags = (value) => {
@@ -125,15 +127,6 @@ const isValidHashtags = (value) => {
   });
 };
 
-// const onFormSubmit = (evt) => {
-//   evt.preventDefault();
-//   if (pristine.validate()) {
-//     pristine.reset();
-//     hashtagInput.value = hashtagInput.value.trim().replaceAll(/\s+/g, ' ');
-//     uploadForm.submit();
-//   }
-// };
-
 const checkLengthComment = (value) => value.length <= MAX_LENGTH_COMMENT;
 errorMessage = `Длина комментари больше ${MAX_LENGTH_COMMENT} символов`;
 
@@ -154,23 +147,22 @@ const unblockSubmitButton = () => {
 const setFormSubmit = () => {
   uploadForm.addEventListener('submit', (evt) => {
     evt.preventDefault();
-
     const isValid = pristine.validate();
     if (isValid) {
-      // hashtagInput.value = hashtagInput.value.trim().replaceAll(/\s+/g, ' ');
-      // uploadForm.submit();
-      blockSubmitButton(); // нужно ли тут удалять пробелы?
+      blockSubmitButton();
       pristine.reset();
       sendData(new FormData(evt.target))
-        .then(sendMessage)
+        .then(() => {
+          sendMessage();
+          closePhotoEditor();
+          resetFilter();
+        })
         .catch(sendErrorMessage)
         .finally(() => {
           unblockSubmitButton();
-          resetFilter();
-          closePhotoEditor();
         });
     }
   });
 };
 
-export { initUploadModal, setFormSubmit, onFileInputChange};
+export { initUploadModal, setFormSubmit };
